@@ -786,7 +786,12 @@ defined(CONFIG_RTL8723F) /*|| defined(CONFIG_RTL8814A)*/
 #define CONFIG_BCN_ICF
 #endif 
 
-#ifndef CONFIG_RTW_MGMT_QUEUE
+#if defined(CONFIG_S9082) && defined(CONFIG_SDIO_HCI)
+/* The 8189ES SDIO aggregation loop supports only the four access categories. */
+#undef CONFIG_RTW_MGMT_QUEUE
+/* S9082 uses different availability registers; refresh free pages by polling. */
+#undef CONFIG_SDIO_TX_ENABLE_AVAL_INT
+#elif !defined(CONFIG_RTW_MGMT_QUEUE)
 	#define CONFIG_RTW_MGMT_QUEUE
 #endif
 

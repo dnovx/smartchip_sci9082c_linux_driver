@@ -1,0 +1,13 @@
+*.o
+*.ko
+*.mod
+*.mod.c
+*.cmd
+Module.symvers
+modules.order
+.tmp_versions/
+__pycache__/
+.venv/
+hal/rtl8188e/sdio/s9082_firmware_generated.h
+*.bin
+*.log

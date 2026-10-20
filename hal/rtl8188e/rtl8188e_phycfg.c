@@ -16,6 +16,9 @@
 
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
+#ifdef CONFIG_S9082
+#include <rtw_s9082_hal.h>
+#endif
 
 
 /*---------------------------Define Local Constant---------------------------*/
@@ -649,7 +652,12 @@ PHY_QueryRFReg8188E(
 #endif
 
 
+#ifdef CONFIG_S9082
+	if (eRFPath != RF_PATH_A || !BitMask) return 0;
+	Original_Value = s9082_rf_read(Adapter, RegAddr);
+#else
 	Original_Value = phy_RFSerialRead(Adapter, eRFPath, RegAddr);
+#endif
 
 	BitShift =  PHY_CalculateBitShift(BitMask);
 	Readback_Value = (Original_Value & BitMask) >> BitShift;
@@ -698,6 +706,11 @@ PHY_SetRFReg8188E(
 	/* u8			RFWaitCounter	= 0; */
 	u32		Original_Value, BitShift;
 	/* _irqL	irqL; */
+
+#ifdef CONFIG_S9082
+	if (eRFPath == RF_PATH_A) s9082_rf_write(Adapter, RegAddr, BitMask, Data);
+	return;
+#endif
 
 #if (DISABLE_BB_RF == 1)
 	return;
@@ -1691,6 +1704,15 @@ PHY_SetSwChnlBWMode8188E(
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	/* RTW_INFO("%s()===>\n",__FUNCTION__); */
+
+#ifdef CONFIG_S9082
+	if (channel < 1 || channel > 14 || Bandwidth != CHANNEL_WIDTH_20) return;
+	pHalData->current_channel = channel;
+	pHalData->current_channel_bw = Bandwidth;
+	pHalData->RfRegChnlVal[0] = (pHalData->RfRegChnlVal[0] & ~0x3ffU) | channel;
+	s9082_rf_write(Adapter, 0x18, 0xfffff, pHalData->RfRegChnlVal[0]);
+	return;
+#endif
 
 	PHY_SwChnl8188E(Adapter, channel);
 	PHY_SetBWMode8188E(Adapter, Bandwidth, Offset40);

@@ -1,3 +1,77 @@
+# Smartchip SCI9082C SDIO Linux driver
+
+Experimental SCI/Smartchip port for **SDIO 02e7:9082**, built on the inherited
+RTL8188E driver. The working milestone is station connectivity on an Amlogic
+S905X AArch64 box running **6.18.44-ophub**. Other kernels/boards are untested.
+
+## Tested status
+
+- Probe, firmware boot, read-only efuse, 2.4GHz channel selection (20MHz).
+- WPA-PSK/CCMP association, DHCP, internet traffic and HTTPS.
+- 1,500/1,500 1000-byte pings over five minutes with HT enabled; queues drain.
+- Driver autoload and network autoconnect after physical power-on.
+- Netplan/networkd and NetworkManager connectivity tested independently.
+
+**Known gaps:** connected-mode direct `iw` scans can abort (including the
+armbian-config AP menu); warm reboot failed on the test box; generic register,
+CAM/key-table and management ACK warning paths need further adaptation.
+AP/P2P/monitor, WPA3, power saving, 40MHz, throughput and long soak are not
+validated. A reported 72.2Mbps link is not a throughput measurement.
+
+## Build and install
+
+You need matching kernel development headers, make, a suitable C compiler,
+binutils, kmod, Python3 and pyelftools. For example, install the distribution's
+build prerequisites and **headers matching your actual running kernel**.
+The ophub kernel may require headers/toolchain from its own distribution.
+The tested kernel requires compiler options unsupported by GCC13.
+
+Firmware is **not distributed here**. Supply your own supported stock
+`9082xs.ko`; see [provenance](docs/provenance.md).
+
+```sh
+git clone https://github.com/dnovx/smartchip_sci9082c_linux_driver.git
+cd smartchip_sci9082c_linux_driver
+python3 -m venv .venv
+. .venv/bin/activate
+pip install pyelftools
+python3 tools/extract-firmware.py /path/to/stock-9082xs.ko
+sh tools/check-system.sh
+sh tools/build.sh
+sudo sh tools/install.sh --autoload
+sudo modprobe 8189es
+```
+
+Cross-build: set `KSRC=/path/to/prepared/target/headers ARCH=arm64
+CROSS_COMPILE=aarch64-linux-gnu-` when invoking `sh tools/build.sh`.
+Headers must include matching configuration/Module.symvers and working host
+build helpers. Never substitute unrelated headers merely to make it compile.
+The wrapper selects the tested AArch64 station-only configuration.
+Host-only contract checks: `python3 tools/test-contracts.py` (requires GCC).
+
+Configure your own SSID/password through `armbian-config`, Netplan or your
+existing network manager. The installer does not change network backends.
+Direct scanning in armbian-config while connected is a known issue; configure
+a known SSID through Netplan if necessary. Keep Ethernet/console access during
+experiments. Validate with `sh tools/verify-install.sh wlan0`.
+
+Uninstall: `sudo sh tools/uninstall.sh`. Kernel updates require rebuilding;
+DKMS is not provided. See [progress and limitations](docs/porting-progress.md).
+
+## Attribution and licensing
+
+Preserves inherited source/history and GPL notices. Local base commit:
+`325748e04685d5a88b435000fc58f5e4eee8ebe6`, branch
+`rtl8188e_usb_sdio_5.13.3-17-test` from the chalesyu RTL8188E tree.
+Stock-module contract recovery informed the SCI port; this is not a claim
+that the recovered proprietary source was obtained or that all hardware
+behavior is equivalent. Firmware has separate, unestablished redistribution
+terms and is excluded. Existing source license notices remain authoritative.
+
+---
+
+## Historical upstream README (Realtek features below are not SCI test claims)
+
 -----
 
 ## rtl8188eu (8188eu.ko)

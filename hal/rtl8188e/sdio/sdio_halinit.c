@@ -16,6 +16,9 @@
 
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
+#ifdef CONFIG_S9082
+#include <rtw_s9082_hal.h>
+#endif
 #include "hal_com_h2c.h"
 #ifndef CONFIG_SDIO_HCI
 	#error "CONFIG_SDIO_HCI shall be on!\n"
@@ -178,6 +181,9 @@ static u8 _CardEnable(PADAPTER padapter)
 
 static u32 _InitPowerOn_8188ES(PADAPTER padapter)
 {
+#ifdef CONFIG_S9082
+	return s9082_power_on(padapter);
+#else
 	u8 value8;
 	u16 value16;
 	u32 value32;
@@ -221,10 +227,14 @@ static u32 _InitPowerOn_8188ES(PADAPTER padapter)
 
 	return _SUCCESS;
 
+#endif
 }
 
 static void hal_poweroff_8188es(PADAPTER padapter)
 {
+#ifdef CONFIG_S9082
+	s9082_power_off(padapter);
+#else
 	u8		u1bTmp;
 	u16		u2bTmp;
 	u32		u4bTmp;
@@ -341,6 +351,7 @@ static void hal_poweroff_8188es(PADAPTER padapter)
 
 	RTW_INFO("<=%s\n", __FUNCTION__);
 
+#endif
 }
 #ifdef CONFIG_SDIO_TX_ENABLE_AVAL_INT
 /* Tx Page FIFO threshold */
@@ -992,6 +1003,9 @@ static u32 rtl8188es_hal_init(PADAPTER padapter)
 #endif /* DBG_HAL_INIT_PROFILING */
 
 	RTW_INFO("+rtl8188es_hal_init\n");
+#ifdef CONFIG_S9082
+	return s9082_receive_init(padapter);
+#endif
 
 	HAL_INIT_PROFILE_TAG(HAL_INIT_STAGES_BEGIN);
 	/* Disable Interrupt first.
@@ -1085,7 +1099,11 @@ static u32 rtl8188es_hal_init(PADAPTER padapter)
 
 	HAL_INIT_PROFILE_TAG(HAL_INIT_STAGES_DOWNLOAD_FW);
 	if (padapter->registrypriv.mp_mode == 0) {
+#ifdef CONFIG_S9082
+		ret = s9082_firmware_download(padapter);
+#else
 		ret = rtl8188e_FirmwareDownload(padapter, _FALSE);
+#endif
 		if (ret != _SUCCESS) {
 			RTW_INFO("%s: Download Firmware failed!!\n", __func__);
 			pHalData->bFWReady = _FALSE;
@@ -1103,7 +1121,11 @@ static u32 rtl8188es_hal_init(PADAPTER padapter)
 
 	HAL_INIT_PROFILE_TAG(HAL_INIT_STAGES_MAC);
 #if (HAL_MAC_ENABLE == 1)
+#ifdef CONFIG_S9082
+	ret = s9082_mac_init(padapter);
+#else
 	ret = PHY_MACConfig8188E(padapter);
+#endif
 	if (ret != _SUCCESS) {
 		goto exit;
 	}
@@ -1114,7 +1136,11 @@ static u32 rtl8188es_hal_init(PADAPTER padapter)
 	/* d. Initialize BB related configurations. */
 	/*  */
 #if (HAL_BB_ENABLE == 1)
+#ifdef CONFIG_S9082
+	ret = s9082_phy_init(padapter);
+#else
 	ret = PHY_BBConfig8188E(padapter);
+#endif
 	if (ret != _SUCCESS) {
 		goto exit;
 	}
@@ -1124,7 +1150,11 @@ static u32 rtl8188es_hal_init(PADAPTER padapter)
 	HAL_INIT_PROFILE_TAG(HAL_INIT_STAGES_RF);
 
 #if (HAL_RF_ENABLE == 1)
+#ifdef CONFIG_S9082
+	ret = s9082_rf_init(padapter);
+#else
 	ret = PHY_RFConfig8188E(padapter);
+#endif
 
 	if (ret != _SUCCESS) {
 		goto exit;
@@ -1621,6 +1651,14 @@ static void _ReadPROMContent(
  *   */
 static u8 ReadAdapterInfo8188ES(PADAPTER padapter)
 {
+#ifdef CONFIG_S9082
+	if (s9082_read_board(padapter) != _SUCCESS)
+		return _FAIL;
+	padapter->EepromAddressSize = 4;
+	_ReadRFType(padapter);
+	readAdapterInfo_8188ES(padapter);
+	return _SUCCESS;
+#else
 	/* Read EEPROM size before call any EEPROM function */
 	padapter->EepromAddressSize = GetEEPROMSize8188E(padapter);
 
@@ -1630,6 +1668,7 @@ static u8 ReadAdapterInfo8188ES(PADAPTER padapter)
 	_ReadPROMContent(padapter);
 
 	return _SUCCESS;
+#endif
 }
 
 static u8 SetHwReg8188ES(PADAPTER Adapter, u8 variable, u8 *val)
@@ -1641,6 +1680,31 @@ static u8 SetHwReg8188ES(PADAPTER Adapter, u8 variable, u8 *val)
 	switch (variable) {
 	case HW_VAR_RXDMA_AGG_PG_TH:
 		break;
+#ifdef CONFIG_S9082
+	case HW_VAR_RCR:
+		ret = rtw_write32(Adapter, 0x4608, s9082_reverse_byte_bits(*(u32 *)val));
+		if (ret == _SUCCESS)
+			pHalData->ReceiveConfig = *(u32 *)val;
+		break;
+	case HW_VAR_MAC_ADDR:
+	case HW_VAR_BSSID: {
+		unsigned int i, base = variable == HW_VAR_MAC_ADDR ? 0x4610 : 0x4618;
+		/* Stock hw_reg_9083x_set cases 3/4: first word is untransformed. */
+		rtw_write32(Adapter, base, (u32)val[0] | ((u32)val[1] << 8) |
+			((u32)val[2] << 16) | ((u32)val[3] << 24));
+		for (i = 4; i < 6; i++)
+			rtw_write8(Adapter, base + i, variable == HW_VAR_BSSID ?
+				s9082_reverse_byte_bits(val[i]) : val[i]);
+		break;
+	}
+	case HW_VAR_SET_OPMODE:
+		rtw_write32(Adapter, 0x4100, (rtw_read32(Adapter, 0x4100) & 0xff3fffff) | 0x400000);
+		break;
+	case HW_VAR_MLME_SITESURVEY:
+		pHalData->ReceiveConfig = 0x7000600f;
+		rtw_write32(Adapter, 0x4608, s9082_reverse_byte_bits(pHalData->ReceiveConfig));
+		break;
+#endif
 
 	case HW_VAR_SET_RPWM:
 #ifdef CONFIG_LPS_LCLK
@@ -1679,6 +1743,12 @@ static void GetHwReg8188ES(PADAPTER padapter, u8 variable, u8 *val)
 	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
 
 	switch (variable) {
+#ifdef CONFIG_S9082
+	case HW_VAR_RCR:
+		pHalData->ReceiveConfig = s9082_reverse_byte_bits(rtw_read32(padapter, 0x4608));
+		*(u32 *)val = pHalData->ReceiveConfig;
+		break;
+#endif
 	case HW_VAR_CPWM:
 		*val = rtw_read8(padapter, SDIO_LOCAL_BASE | SDIO_REG_HCPWM1);
 		break;

@@ -600,8 +600,9 @@ s32 _dequeue_writeport(PADAPTER padapter)
 
 	pxmitbuf = select_and_dequeue_pending_xmitbuf(padapter);
 
-	if (pxmitbuf == NULL)
+	if (pxmitbuf == NULL) {
 		return _TRUE;
+	}
 
 	deviceId = ffaddr2deviceId(pdvobjpriv, pxmitbuf->ff_hwaddr);
 
@@ -651,6 +652,17 @@ query_free_page:
 #else /* CONFIG_SDIO_TX_ENABLE_AVAL_INT */
 		polling_num++;
 		if ((polling_num % 10) == 0) {/* or 80 */
+#ifdef CONFIG_S9082
+			{
+				static unsigned int reports;
+				HAL_DATA_TYPE *hal = GET_HAL_DATA(padapter);
+				if (reports++ < 8)
+					RTW_INFO("S9082 TX starved queue=%u pages=%u free=%u/%u/%u/%u oqt=%u\n",
+						PageIdx, pxmitbuf->pg_num, hal->SdioTxFIFOFreePage[0],
+						hal->SdioTxFIFOFreePage[1], hal->SdioTxFIFOFreePage[2],
+						hal->SdioTxFIFOFreePage[3], hal->SdioTxOQTFreeSpace);
+			}
+#endif
 
 			enqueue_pending_xmitbuf_to_head(pxmitpriv, pxmitbuf);
 			#ifdef DBG_TX_FREE_PAGE
@@ -739,8 +751,9 @@ s32 rtl8188es_xmit_buf_handler(PADAPTER padapter)
 		return _FAIL;
 	}
 
-	if (rtw_mi_check_pending_xmitbuf(padapter) == 0)
+	if (rtw_mi_check_pending_xmitbuf(padapter) == 0) {
 		return _SUCCESS;
+	}
 
 #ifdef CONFIG_LPS_LCLK
 	ret = rtw_register_tx_alive(padapter);

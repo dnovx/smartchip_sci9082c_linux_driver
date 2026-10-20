@@ -893,7 +893,7 @@ s32	rtw_hal_mgnt_xmit(_adapter *padapter, struct xmit_frame *pmgntframe)
 		rtw_mgmt_xmitframe_coalesce(padapter, pmgntframe->pkt, pmgntframe);
 #endif
 
-#ifdef CONFIG_RTW_MGMT_QUEUE
+#if defined(CONFIG_RTW_MGMT_QUEUE) && (defined(CONFIG_AP_MODE) || defined(CONFIG_RTW_MESH))
 	if (MLME_IS_AP(padapter) || MLME_IS_MESH(padapter)) {
 		_enter_critical_bh(&pxmitpriv->lock, &irqL);
 		ret = mgmt_xmitframe_enqueue_for_sleeping_sta(padapter, pmgntframe);

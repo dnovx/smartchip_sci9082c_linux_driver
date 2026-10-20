@@ -401,6 +401,9 @@ static void rtl8188es_recv_tasklet(void *priv)
 			}
 
 			pkt_offset = RXDESC_SIZE + pattrib->drvinfo_sz + pattrib->pkt_len;
+#ifdef CONFIG_S9082
+			pkt_offset += pattrib->shift_sz;
+#endif
 
 			if ((ptr + pkt_offset) > precvbuf->ptail) {
 				RTW_INFO("%s()-%d: : next pkt len(%p,%d) exceed ptail(%p)!\n", __FUNCTION__, __LINE__, ptr, pkt_offset, precvbuf->ptail);
@@ -445,6 +448,9 @@ static void rtl8188es_recv_tasklet(void *priv)
 
 				recvframe_put(precvframe, pkt_offset);
 				recvframe_pull(precvframe, RXDESC_SIZE + pattrib->drvinfo_sz);
+#ifdef CONFIG_S9082
+				recvframe_pull(precvframe, pattrib->shift_sz);
+#endif
 
 #ifdef CONFIG_RX_PACKET_APPEND_FCS
 				if (check_fwstate(&padapter->mlmepriv, WIFI_MONITOR_STATE) == _FALSE) {

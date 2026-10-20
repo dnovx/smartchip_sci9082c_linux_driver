@@ -17,6 +17,9 @@
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
 #include "hal_com_h2c.h"
+#ifdef CONFIG_S9082
+#include <rtw_s9082.h>
+#endif
 
 #define CONFIG_H2C_EF
 
@@ -35,7 +38,11 @@ static u8 _is_fw_read_cmd_down(_adapter *padapter, u8 msgbox_num)
 	/* RTW_INFO(" _is_fw_read_cmd_down ,reg_1cc(%x),msg_box(%d)...\n",rtw_read8(padapter,REG_HMETFR),msgbox_num); */
 
 	do {
+#ifdef CONFIG_S9082
+		valid = rtw_read8(padapter, 0x41cc) & BIT(7 - msgbox_num);
+#else
 		valid = rtw_read8(padapter, REG_HMETFR) & BIT(msgbox_num);
+#endif
 		if (0 == valid)
 			read_down = _TRUE;
 		else
@@ -105,6 +112,17 @@ s32 FillH2CCmd_88E(PADAPTER padapter, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer)
 			_rtw_memcpy((u8 *)(&h2c_cmd_ex), pCmdBuffer + 3, CmdLen - 3);
 		}
 		/* Write Ext command */
+#ifdef CONFIG_S9082
+		/* Stock Ccmd_83X_from_FillH writes only the used extension bytes. */
+		msgbox_ex_addr = 0x41f0 + h2c_box_num * 4;
+		for (cmd_idx = 3; cmd_idx < CmdLen; cmd_idx++)
+			rtw_write8(padapter, msgbox_ex_addr + cmd_idx - 3,
+				s9082_reverse_byte_bits(pCmdBuffer[cmd_idx]));
+		msgbox_addr = 0x41d0 + h2c_box_num * 4;
+		for (cmd_idx = 0; cmd_idx < 4; cmd_idx++)
+			rtw_write8(padapter, msgbox_addr + cmd_idx,
+				s9082_reverse_byte_bits(*((u8 *)(&h2c_cmd) + cmd_idx)));
+#else
 		msgbox_ex_addr = REG_HMEBOX_EXT_0 + (h2c_box_num * RTL88E_EX_MESSAGE_BOX_SIZE);
 #ifdef CONFIG_H2C_EF
 		for (cmd_idx = 0; cmd_idx < RTL88E_EX_MESSAGE_BOX_SIZE; cmd_idx++)
@@ -123,6 +141,7 @@ s32 FillH2CCmd_88E(PADAPTER padapter, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer)
 		h2c_cmd = le32_to_cpu(h2c_cmd);
 		rtw_write32(padapter, msgbox_addr, h2c_cmd);
 #endif
+#endif /* CONFIG_S9082 */
 
 
 		/*	RTW_INFO("MSG_BOX:%d,CmdLen(%d), reg:0x%x =>h2c_cmd:0x%x, reg:0x%x =>h2c_cmd_ex:0x%x ..\n" */

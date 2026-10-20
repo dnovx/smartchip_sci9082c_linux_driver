@@ -1665,10 +1665,18 @@ Current IOREG MAP
 #define WLAN_RX0FF_MSK				0x0003
 
 #define SDIO_WITHOUT_REF_DEVICE_ID	0	/* Without reference to the SDIO Device ID */
+#ifdef CONFIG_S9082
+#include <rtw_s9082.h>
+#define SDIO_LOCAL_DEVICE_ID S9082_LOCAL_DEVICE_ID
+#define WLAN_TX_HIQ_DEVICE_ID S9082_TX_HIQ_DEVICE_ID
+#define WLAN_TX_MIQ_DEVICE_ID S9082_TX_MIQ_DEVICE_ID
+#define WLAN_TX_LOQ_DEVICE_ID S9082_TX_LOQ_DEVICE_ID
+#else
 #define SDIO_LOCAL_DEVICE_ID           		0	/* 0b[16], 000b[15:13] */
 #define WLAN_TX_HIQ_DEVICE_ID			4	/* 0b[16], 100b[15:13] */
 #define WLAN_TX_MIQ_DEVICE_ID 		5	/* 0b[16], 101b[15:13] */
 #define WLAN_TX_LOQ_DEVICE_ID 		6	/* 0b[16], 110b[15:13] */
+#endif
 #define WLAN_TX_EXQ_DEVICE_ID		3	/* 0b[16], 011b[15:13] */
 #define WLAN_RX0FF_DEVICE_ID 			7	/* 0b[16], 111b[15:13] */
 #define WLAN_IOREG_DEVICE_ID 			8	/* 1b[16] */

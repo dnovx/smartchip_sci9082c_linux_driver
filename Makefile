@@ -25,6 +25,13 @@ EXTRA_CFLAGS += -Wno-date-time	# Fix compile error && warning on gcc 4.9 and lat
 endif
 
 EXTRA_CFLAGS += -I$(src)/include
+EXTRA_CFLAGS += -I$(src)/hal/phydm
+
+# Explicit experimental hardware variant; requires RTL8188E SDIO below.
+CONFIG_S9082 ?= n
+ifeq ($(CONFIG_S9082), y)
+EXTRA_CFLAGS += -DCONFIG_S9082
+endif
 
 EXTRA_LDFLAGS += --strip-debug
 
@@ -2473,6 +2480,9 @@ $(MODULE_NAME)-$(CONFIG_WAPI_SUPPORT) += core/rtw_wapi.o	\
 
 $(MODULE_NAME)-y += $(_OS_INTFS_FILES)
 $(MODULE_NAME)-y += $(_HAL_INTFS_FILES)
+ifeq ($(CONFIG_S9082), y)
+$(MODULE_NAME)-y += hal/rtl8188e/sdio/s9082_hal.o
+endif
 $(MODULE_NAME)-y += $(_PHYDM_FILES)
 $(MODULE_NAME)-y += $(_BTC_FILES)
 $(MODULE_NAME)-y += $(_PLATFORM_FILES)
@@ -2484,6 +2494,9 @@ $(MODULE_NAME)-$(CONFIG_MP_INCLUDED)+= core/rtw_bt_mp.o
 endif
 
 obj-$(CONFIG_RTL8188EU) := $(MODULE_NAME).o
+
+# Modern Kbuild consumes ccflags-y instead of the legacy EXTRA_CFLAGS.
+ccflags-y += $(EXTRA_CFLAGS)
 
 else
 

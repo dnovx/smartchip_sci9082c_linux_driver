@@ -10436,6 +10436,99 @@ void rtw_cfg80211_external_auth_status(struct wiphy *wiphy, struct net_device *d
 	}
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+/* Adapt the single-link driver to current cfg80211 callback signatures. */
+static int rtw_add_key_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	int link_id, u8 index, bool pairwise, const u8 *mac, struct key_params *params)
+{
+	if (!wdev->netdev || link_id > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_add_key(wiphy, wdev->netdev, link_id, index, pairwise, mac, params);
+}
+
+static int rtw_get_key_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	int link_id, u8 index, bool pairwise, const u8 *mac, void *cookie,
+	void (*callback)(void *, struct key_params *))
+{
+	if (!wdev->netdev || link_id > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_get_key(wiphy, wdev->netdev, link_id, index, pairwise, mac, cookie, callback);
+}
+
+static int rtw_del_key_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	int link_id, u8 index, bool pairwise, const u8 *mac)
+{
+	if (!wdev->netdev || link_id > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_del_key(wiphy, wdev->netdev, link_id, index, pairwise, mac);
+}
+
+static int rtw_mgmt_key_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	int link_id, u8 index)
+{
+	if (!wdev->netdev || link_id > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_set_default_mgmt_key(wiphy, wdev->netdev, link_id, index);
+}
+
+static int rtw_get_station_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const u8 *mac, struct station_info *info)
+{
+	if (!wdev->netdev)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_get_station(wiphy, wdev->netdev, mac, info);
+}
+
+static int rtw_wiphy_params_current(struct wiphy *wiphy, int radio_idx, u32 changed)
+{
+	if (radio_idx > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_set_wiphy_params(wiphy, changed);
+}
+
+static int rtw_set_txpower_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	int radio_idx, enum nl80211_tx_power_setting type, int mbm)
+{
+	if (radio_idx > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_set_txpower(wiphy, wdev, type, mbm);
+}
+
+static int rtw_get_txpower_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	int radio_idx, unsigned int link_id, int *dbm)
+{
+	if (radio_idx > 0 || link_id > 0)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_get_txpower(wiphy, wdev, dbm);
+}
+
+static int rtw_monitor_channel_current(struct wiphy *wiphy, struct net_device *ndev,
+	struct cfg80211_chan_def *chandef)
+{
+	return cfg80211_rtw_set_monitor_channel(wiphy, chandef);
+}
+
+static int rtw_remain_on_channel_current(struct wiphy *wiphy, struct wireless_dev *wdev,
+	struct ieee80211_channel *channel, unsigned int duration, u64 *cookie, const u8 *addr)
+{
+	/* The legacy implementation cannot honor a caller-selected source address. */
+	if (addr)
+		return -EOPNOTSUPP;
+	return cfg80211_rtw_remain_on_channel(wiphy, wdev, channel, duration, cookie);
+}
+
+#define cfg80211_rtw_add_key rtw_add_key_current
+#define cfg80211_rtw_get_key rtw_get_key_current
+#define cfg80211_rtw_del_key rtw_del_key_current
+#define cfg80211_rtw_set_default_mgmt_key rtw_mgmt_key_current
+#define cfg80211_rtw_get_station rtw_get_station_current
+#define cfg80211_rtw_set_wiphy_params rtw_wiphy_params_current
+#define cfg80211_rtw_set_txpower rtw_set_txpower_current
+#define cfg80211_rtw_get_txpower rtw_get_txpower_current
+#define cfg80211_rtw_set_monitor_channel rtw_monitor_channel_current
+#define cfg80211_rtw_remain_on_channel rtw_remain_on_channel_current
+#endif
+
 static struct cfg80211_ops rtw_cfg80211_ops = {
 	.change_virtual_intf = cfg80211_rtw_change_iface,
 	.add_key = cfg80211_rtw_add_key,

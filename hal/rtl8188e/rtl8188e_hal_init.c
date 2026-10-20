@@ -2344,7 +2344,11 @@ static void read_chip_version_8188e(PADAPTER padapter)
 
 	pHalData = GET_HAL_DATA(padapter);
 
+#ifdef CONFIG_S9082
+	value32 = rtw_read32(padapter, 0x40f0);
+#else
 	value32 = rtw_read32(padapter, REG_SYS_CFG);
+#endif
 	pHalData->version_id.ICType = CHIP_8188E;
 	pHalData->version_id.ChipType = ((value32 & RTL_ID) ? TEST_CHIP : NORMAL_CHIP);
 
@@ -2849,7 +2853,11 @@ Hal_EfuseParseIDCode88E(
 
 	/* Checl 0x8129 again for making sure autoload status!! */
 	EEPROMId = le16_to_cpu(*((u16 *)hwinfo));
+#ifdef CONFIG_S9082
+	if (EEPROMId != 0x9082) {
+#else
 	if (EEPROMId != RTL_EEPROM_ID) {
+#endif
 		RTW_INFO("EEPROM ID(%#x) is invalid!!\n", EEPROMId);
 		pHalData->bautoload_fail_flag = _TRUE;
 	} else

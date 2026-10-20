@@ -61,6 +61,27 @@ bool sdio_power_on_check(PADAPTER padapter) {
 	bool ret = _FAIL;
 	int index = 0;
 
+#ifdef CONFIG_S9082
+	val_offset0 = rtw_read8(padapter, 0x4100);
+	val_offset1 = rtw_read8(padapter, 0x4101);
+	val_offset2 = rtw_read8(padapter, 0x4102);
+	val_offset3 = rtw_read8(padapter, 0x4103);
+	if (val_offset0 == 0x57 || val_offset1 == 0x57 || val_offset2 == 0x57 || val_offset3 == 0x57)
+		return _FAIL;
+	val_mix = val_offset0 | (val_offset1 << 8) | (val_offset2 << 16) | (val_offset3 << 24);
+	for (index = 0; index < 100; index++)
+		if (rtw_read32(padapter, 0x4100) == val_mix)
+			break;
+	if (index == 100)
+		return _FAIL;
+	for (index = 0; index < 100; index++) {
+		if (rtw_write32(padapter, 0x41b8, 0x12345678) != _SUCCESS)
+			return _FAIL;
+		if (rtw_read32(padapter, 0x41b8) == 0x12345678)
+			return _SUCCESS;
+	}
+	return _FAIL;
+#endif
 	val_offset0 = rtw_read8(padapter, REG_CR);
 	val_offset1 = rtw_read8(padapter, REG_CR + 1);
 	val_offset2 = rtw_read8(padapter, REG_CR + 2);

@@ -2602,6 +2602,22 @@ int proc_get_trx_info(struct seq_file *m, void *v)
 	RTW_PRINT_SEL(m, "wmm_edca_bk, aifs = %u us, cw_min = %u, cw_max = %u, txop_limit = %u us\n", bk_params[0], bk_params[1], bk_params[2], bk_params[3]);
 
 	dump_os_queue(m, padapter);
+#ifdef CONFIG_S9082
+	{
+		_list *head = get_list_head(&pxmitpriv->pending_xmitbuf_queue);
+		_list *entry;
+		unsigned int count = 0;
+		_irqL flags;
+		_enter_critical_bh(&pxmitpriv->pending_xmitbuf_queue.lock, &flags);
+		for (entry = get_next(head); entry != head && count < 64; entry = get_next(entry))
+			count++;
+		_exit_critical_bh(&pxmitpriv->pending_xmitbuf_queue.lock, &flags);
+		RTW_PRINT_SEL(m, "S9082 pending=%u sem=%u blocked=%u ac=%u offch=%u scan=%u\n",
+			count, pxmitpriv->xmit_sema.count, rtw_is_xmit_blocked(padapter),
+			rtw_xmit_ac_blocked(padapter), adapter_to_rfctl(padapter)->offch_state,
+			mlmeext_scan_state(&padapter->mlmeextpriv));
+	}
+#endif
 
 	RTW_PRINT_SEL(m, "free_xmitbuf_cnt=%d, free_xmitframe_cnt=%d\n"
 		, pxmitpriv->free_xmitbuf_cnt, pxmitpriv->free_xmitframe_cnt);
