@@ -107,3 +107,37 @@ Validated module SHA256:
 Cross-build and host contracts passed. Regression:20/20 active/passive
 scans (1.54–1.56s),300/300 large pings,HTTPS200,reconnect+scan,10/10
 subsequent pings, empty queues and16 free TX buffers. Cold boot untested.
+
+## Download-path experiments — 2026-10-21
+
+An experimental SCI EDCA override implemented stock cases0x1c–0x1f at
+0x4500/04/08/0c with per-byte reversal. Runtime traces confirmed the
+negotiated values were written. Three download runs measured28.31–29.08Mbps,
+versus30.86–30.97Mbps in the earlier AMPDU baseline; upload remained
+44.73–46.41Mbps. This did not establish a download benefit. The experimental
+override was removed and the installed AMPDU baseline reloaded.
+
+Using that experimental build, alternating RX reorder windows16/64/16/64
+measured31.04/30.77/30.72/30.72Mbps download. No benefit was demonstrated;
+automatic RX acceptance/window settings were restored. No RX DMA register
+toggle was attempted in this follow-up.
+
+On the restored AMPDU baseline, explicit iperf3 socket buffers greatly
+reduced download-loaded gateway latency without increasing throughput:
+
+| iperf3 `-w` | Download Mbps | Loaded gateway mean / maximum ms |
+| --- | --- | --- |
+| 32K | 26.69 | 9.50 / 30.65 |
+| 64K | 28.94 | 19.82 / 31.08 |
+| 128K | 29.36 | 35.35 / 55.66 |
+| 256K | 28.99 | 42.21 / 77.33 |
+
+Each was a20-second device-bound reverse TCP run with concurrent gateway
+pings. Buffer settings applied only to the test sockets; no system TCP
+defaults were changed. These observations support queue buildup as a major
+contributor to loaded latency, but do not localize that queue to the driver,
+access point, or sender. They do not explain the roughly31Mbps download
+ceiling. The Windows sender, AP scheduling, receive delivery costs and
+over-air RX rates still need isolation. No download-speed fix is claimed.
+After baseline restoration, automatic RX settings and5/5 Wi-Fi internet
+pings were verified. The installed driver remains the validated AMPDU build.
