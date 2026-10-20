@@ -16,6 +16,7 @@
 
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
+#include <rtw_s9082_trace.h>
 
 #ifdef CONFIG_XMIT_ACK
 void dump_txrpt_ccx_88e(void *buf)
@@ -42,6 +43,9 @@ void dump_txrpt_ccx_88e(void *buf)
 void handle_txrpt_ccx_88e(_adapter *adapter, u8 *buf)
 {
 	struct txrpt_ccx_88e *txrpt_ccx = (struct txrpt_ccx_88e *)buf;
+	S9082_TRACE("ccx report interrupt=%u ok=%u sw=%u waiting=%u seq=%u",
+		txrpt_ccx->int_ccx, txrpt_ccx->pkt_ok, txrpt_ccx_sw_88e(txrpt_ccx),
+		adapter->xmitpriv.ack_tx, adapter->xmitpriv.seq_no);
 
 #ifdef DBG_CCX
 	dump_txrpt_ccx_88e(buf);

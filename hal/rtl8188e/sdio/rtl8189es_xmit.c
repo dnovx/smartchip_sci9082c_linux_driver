@@ -15,6 +15,7 @@
 #define _RTL8189ES_XMIT_C_
 
 #include <drv_types.h>
+#include <rtw_s9082_trace.h>
 #include <rtl8188e_hal.h>
 
 //#undef SDIO_FREE_XMIT_BUF_SEMA
@@ -363,6 +364,9 @@ void rtl8188es_fill_default_txdesc(
 #endif /* CONFIG_XMIT_ACK */
 
 		ptxdesc->datarate = MRateToHwRate(pattrib->rate);
+		if (pxmitframe->ack_report)
+			S9082_TRACE("tx report requested ccx=%u seq=%u qsel=%u subtype=%u", ptxdesc->ccx,
+				padapter->xmitpriv.seq_no, ptxdesc->qsel, pattrib->subtype);
 
 	} else if (pxmitframe->frame_tag == TXAGG_FRAMETAG) {
 	}

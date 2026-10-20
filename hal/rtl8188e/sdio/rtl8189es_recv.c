@@ -16,6 +16,7 @@
 
 #include <drv_conf.h>
 #include <drv_types.h>
+#include <rtw_s9082_trace.h>
 #include <recv_osdep.h>
 #include <rtl8188e_hal.h>
 
@@ -476,8 +477,13 @@ static void rtl8188es_recv_tasklet(void *priv)
 				else { /* pkt_rpt_type == TX_REPORT1-CCX, TX_REPORT2-TX RTP,HIS_REPORT-USB HISR RTP */
 
 					/* enqueue recvframe to txrtp queue */
-					if (pattrib->pkt_rpt_type == TX_REPORT1)
+					if (pattrib->pkt_rpt_type == TX_REPORT1) {
+#if defined(CONFIG_S9082) && defined(CONFIG_XMIT_ACK)
+						handle_txrpt_ccx_88e(padapter, precvframe->u.hdr.rx_data);
+#else
 						RTW_INFO("rx CCX\n");
+#endif
+					}
 					else if (pattrib->pkt_rpt_type == TX_REPORT2) {
 						/* RTW_INFO("rx TX RPT\n"); */
 						ODM_RA_TxRPT2Handle_8188E(

@@ -41,8 +41,8 @@ network backend still needs verification.
 
 ## Remaining adaptation
 
-- Associated direct scan aborts: reproduce using `iw dev wlan0 scan` and
-  retain exit status/stderr. armbian-config parses this direct scan.
+- Associated direct scan watchdog failures have a validated bounded-wait
+  workaround below; actual CCX ACK-report delivery remains unresolved.
 - Generic RTL8188E accesses still produce invalid0xeaea values: CAM/security,
   RXDMA reset checks, EDCA and management ACK handling need evidence-backed
   adaptation. Successful encrypted traffic does not prove hardware CAM works.
@@ -75,3 +75,41 @@ a fixed 2-second allowance, without explicitly accounting for these repeated
 ACK waits. Missing SCI TX-report/ACK integration may therefore contribute to
 scan watchdog expiry. This is a hypothesis, not a verified fix; TX-report
 delivery and transition timing need instrumentation before changing behavior.
+
+## Validated bounded-wait workaround
+
+SCI-only timing traces confirmed 500 ms management-ACK waits occupying the
+command thread before scan entry. Many originated from block-ack action retries,
+not just null-data announcements. Scans had a 3400 ms watchdog and could expire
+before their command ran. Missing report initialization was also found:
+stock `_hal_init_tll9083xs` enables 0x44ec bits 7:6, programs 0x44ed=0x40,
+and later sets 0x44f0=0xbc0f. Restoring this produced type-2 rate reports,
+but no type-1 CCX reports. The non-copy SDIO receive branch now dispatches
+CCX reports if any arrive instead of only logging them.
+
+Default SCI behavior now attempts management transmission and returns `_FAIL`
+immediately when ACK confirmation is requested. It does not manufacture ACK
+success. Scan power-save announcements use the existing repeated, non-waiting
+null-data path. This avoids both unavailable ACK waits and 500 ms retry sleeps.
+The scan watchdog remains unchanged. Set `s9082_ack_failfast=0` only for report
+bring-up experiments; it restores the blocking behavior and known scan failures.
+`s9082_scan_trace=1` enables at most 600 metadata-only trace records per load.
+
+Denied/unqueued SCI cfg80211 scans return `-EBUSY` rather than completing
+synchronously inside the request callback. The former path could leave `iw`
+waiting for an event already emitted; callers should retry a busy request.
+
+Validation on the test box with networkd: 10 active plus 10 passive scans
+completed in 1526–1569 ms, returning 4–5 BSS entries without aborts or watchdog
+events. A final default-parameter build repeated all 20 scans in 1535–1563 ms,
+returning 4–6 BSS entries. Reconnect followed by another scan passed. TX queues drained with all
+16 buffers free. Initial post-scan traffic was 299/300 large pings and HTTPS200;
+a settled repeat passed 300/300 large pings and HTTPS200. The final build passed
+300/300 large pings twice and HTTPS200 twice. The exact armbian-config parsing
+pipeline yielded five complete AP entries. The interactive menu itself was
+not automated.
+
+Stock evidence: initialization
+`ev_05e6955a54ac243924cd1fc235c77f7340d84f3a137c1cb5435f521a4830eb9b`;
+CCX result handler
+`ev_d994d190ab3c679b0a4196f546f509f9bb3070c1025c0e956be273972a850557`.

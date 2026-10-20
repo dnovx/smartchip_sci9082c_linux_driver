@@ -11,10 +11,13 @@ S905X AArch64 box running **6.18.44-ophub**. Other kernels/boards are untested.
 - 1,500/1,500 1000-byte pings over five minutes with HT enabled; queues drain.
 - Driver autoload and network autoconnect after physical power-on.
 - Netplan/networkd and NetworkManager connectivity tested independently.
+- Associated active/passive scans: 10 consecutive scans each passed after
+  bounding unavailable management-ACK waits; see the scan follow-up report.
 
-**Known gaps:** connected-mode direct `iw` scans can abort (including the
-armbian-config AP menu); warm reboot failed on the test box; generic register,
-CAM/key-table and management ACK warning paths need further adaptation.
+**Known gaps:** warm reboot failed on the test box; generic register and
+CAM/key-table paths need further adaptation. Management ACK confirmation is
+unavailable: frames are transmitted but ACK-dependent operations fail promptly
+instead of blocking the command queue. This is a workaround, not working CCX.
 AP/P2P/monitor, WPA3, power saving, 40MHz, throughput and long soak are not
 validated. A reported 72.2Mbps link is not a throughput measurement.
 
@@ -51,8 +54,7 @@ Host-only contract checks: `python3 tools/test-contracts.py` (requires GCC).
 
 Configure your own SSID/password through `armbian-config`, Netplan or your
 existing network manager. The installer does not change network backends.
-Direct scanning in armbian-config while connected is a known issue; configure
-a known SSID through Netplan if necessary. Keep Ethernet/console access during
+Busy/denied scan requests return `-EBUSY`; retry after settling. Keep Ethernet/console access during
 experiments. Validate with `sh tools/verify-install.sh wlan0`.
 
 Uninstall: `sudo sh tools/uninstall.sh`. Kernel updates require rebuilding;

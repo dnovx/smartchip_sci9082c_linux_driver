@@ -91,6 +91,10 @@
  * always return -EBUSY at the condition of scan deny.
  */
 /* #define CONFIG_NOTIFY_SCAN_ABORT_WITH_BUSY */
+#ifdef CONFIG_S9082
+/* Let callers retry denied scans instead of racing a synchronous done event. */
+#define CONFIG_NOTIFY_SCAN_ABORT_WITH_BUSY
+#endif
 
 static const u32 rtw_cipher_suites[] = {
 	WLAN_CIPHER_SUITE_WEP40,
@@ -3540,6 +3544,10 @@ bypass_p2p_chk:
 
 check_need_indicate_scan_done:
 	if (_TRUE == need_indicate_scan_done) {
+#ifdef CONFIG_S9082
+		/* No request was queued: synchronous completion races nl80211 listeners. */
+		ret = -EBUSY;
+#else
 #if (KERNEL_VERSION(4, 8, 0) <= LINUX_VERSION_CODE)
 		struct cfg80211_scan_info info;
 
@@ -3555,6 +3563,7 @@ check_need_indicate_scan_done:
 #else
 		cfg80211_scan_done(request, 0);
 #endif
+#endif /* CONFIG_S9082 */
 	}
 
 	if (ps_denied == _TRUE)

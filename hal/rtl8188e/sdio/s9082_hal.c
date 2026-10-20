@@ -6,6 +6,15 @@
 #include <rtw_s9082_init.h>
 #include <rtw_s9082_efuse.h>
 #include "s9082_data.h"
+#include <rtw_s9082_trace.h>
+
+bool s9082_scan_trace;
+bool s9082_ack_failfast = true;
+module_param_named(s9082_ack_failfast, s9082_ack_failfast, bool, 0644);
+MODULE_PARM_DESC(s9082_ack_failfast, "Fail unconfirmed management ACKs immediately (default enabled)");
+atomic_t s9082_trace_remaining = ATOMIC_INIT(600);
+module_param_named(s9082_scan_trace, s9082_scan_trace, bool, 0644);
+MODULE_PARM_DESC(s9082_scan_trace, "Bounded SCI scan/TX-report timing diagnostics");
 
 static int power_read(void *context, unsigned int address, int local, unsigned char *value)
 {
@@ -364,6 +373,10 @@ u32 s9082_receive_init(PADAPTER adapter)
 		}
 	}
 	RTW_INFO("S9082 LLT all 256 entries verified\n");
+	/* Stock _hal_init_tll9083xs enables TX reports before receive setup. */
+	W8(0x44ec, rtw_read8(adapter, 0x44ec) | 0xc0);
+	W8(0x44ed, 0x40);
+	W16(0x44f0, 0xbc0f);
 	/* Stock three-pipe priority: BE=1, BK=1, VI=2, VO=3, MG=3, HI=3. */
 	W16(0x410c, (rtw_read16(adapter, 0x410c) & 0xe0) |
 		s9082_reverse_byte_bits((1U << 8) | (1U << 10) | (2U << 6) |

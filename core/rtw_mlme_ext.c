@@ -15,6 +15,7 @@
 #define _RTW_MLME_EXT_C_
 
 #include <drv_types.h>
+#include <rtw_s9082_trace.h>
 #include <hal_data.h>
 
 struct mlme_handler mlme_sta_tbl[] = {
@@ -7869,6 +7870,13 @@ s32 dump_mgntframe_and_wait(_adapter *padapter, struct xmit_frame *pmgntframe, i
 
 s32 dump_mgntframe_and_wait_ack_timeout(_adapter *padapter, struct xmit_frame *pmgntframe, int timeout_ms)
 {
+#ifdef CONFIG_S9082
+	if (s9082_ack_failfast) {
+		/* Transmission is attempted, but no ACK confirmation is available. */
+		dump_mgntframe(padapter, pmgntframe);
+		return _FAIL;
+	}
+#endif
 #ifdef CONFIG_XMIT_ACK
 	static u8 seq_no = 0;
 	s32 ret = _FAIL;
@@ -7883,6 +7891,9 @@ s32 dump_mgntframe_and_wait_ack_timeout(_adapter *padapter, struct xmit_frame *p
 	_enter_critical_mutex(&pxmitpriv->ack_tx_mutex, NULL);
 	pxmitpriv->ack_tx = _TRUE;
 	pxmitpriv->seq_no = seq_no++;
+	S9082_TRACE("ack begin seq=%u timeout=%d scan=%u offch=%u",
+		pxmitpriv->seq_no, timeout_ms, mlmeext_scan_state(&padapter->mlmeextpriv),
+		adapter_to_rfctl(padapter)->offch_state);
 	pmgntframe->ack_report = 1;
 	rtw_sctx_init(&(pxmitpriv->ack_tx_ops), timeout_ms);
 
@@ -7896,6 +7907,7 @@ s32 dump_mgntframe_and_wait_ack_timeout(_adapter *padapter, struct xmit_frame *p
 		ret = rtw_sctx_wait(&(pxmitpriv->ack_tx_ops), __func__);
 
 	pxmitpriv->ack_tx = _FALSE;
+	S9082_TRACE("ack end seq=%u ret=%d", pxmitpriv->seq_no, ret);
 	_exit_critical_mutex(&pxmitpriv->ack_tx_mutex, NULL);
 
 	return ret;
@@ -14148,6 +14160,8 @@ u32 rtw_scan_timeout_decision(_adapter *padapter)
 		scan_ms = ss->scan_ch_ms;
 
 	ss->scan_timeout_ms = (scan_ms * max_chan_num) + back_op_times + SCANNING_TIMEOUT_EX;
+	S9082_TRACE("scan budget=%u dwell=%u channels=%u backop=%u",
+		ss->scan_timeout_ms, scan_ms, max_chan_num, back_op_times);
 	#ifdef DBG_SITESURVEY
 	RTW_INFO("%s , scan_timeout_ms = %d (ms)\n", __func__, ss->scan_timeout_ms);
 	#endif /*DBG_SITESURVEY*/
@@ -14611,7 +14625,14 @@ u8 rtw_ps_annc(_adapter *adapter, bool ps)
 					set_channel_bwmode(iface, ch, offset, bw);
 				}
 				#endif /* CONFIG_MCC_MODE */
-				issue_nulldata(iface, NULL, ps, 3, 500);
+#ifdef CONFIG_S9082
+				if (s9082_ack_failfast)
+					/* Repeat without claiming ACK success or waiting on unsupported reports. */
+					issue_nulldata(iface, NULL, ps, 3, 0);
+				else
+#endif
+					issue_nulldata(iface, NULL, ps, 3, 500);
+				S9082_TRACE("ps announcement end ps=%u", ps);
 				ps_anc = 1;
 			}
 		#ifdef CONFIG_RTW_MESH
@@ -14638,6 +14659,7 @@ void rtw_leave_opch(_adapter *adapter)
 	if (rfctl->offch_state == OFFCHS_NONE) {
 		/* prepare to leave operating channel */
 		rfctl->offch_state = OFFCHS_LEAVING_OP;
+		S9082_TRACE("leave op begin");
 
 		/* clear HW TX queue */
 		rtw_hal_set_hwreg(adapter, HW_VAR_CHECK_TXBUF, 0);
@@ -14647,6 +14669,7 @@ void rtw_leave_opch(_adapter *adapter)
 		rtw_ps_annc(adapter, 1);
 
 		rfctl->offch_state = OFFCHS_LEAVE_OP;
+		S9082_TRACE("leave op end");
 	}
 
 	_exit_critical_mutex(&rfctl->offch_mutex, NULL);
@@ -14665,10 +14688,12 @@ void rtw_back_opch(_adapter *adapter)
 
 	if (rfctl->offch_state != OFFCHS_NONE) {
 		rfctl->offch_state = OFFCHS_BACKING_OP;
+		S9082_TRACE("back op begin");
 		rtw_hal_macid_wakeup_all_used(adapter);
 		rtw_ps_annc(adapter, 0);
 
 		rfctl->offch_state = OFFCHS_NONE;
+		S9082_TRACE("back op end");
 		rtw_mi_os_xmit_schedule(adapter);
 	}
 

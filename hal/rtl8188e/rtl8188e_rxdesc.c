@@ -16,6 +16,7 @@
 
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
+#include <rtw_s9082_trace.h>
 
 void rtl8188e_query_rx_desc_status(
 	union recv_frame *precvframe,
@@ -44,6 +45,9 @@ void rtl8188e_query_rx_desc_status(
 
 	/* update rx report to recv_frame attribute */
 	pattrib->pkt_rpt_type = (u8)((report.rxdw3 >> 14) & 0x3);/* prxreport->rpt_sel; */
+	if (pattrib->pkt_rpt_type != NORMAL_RX)
+		S9082_TRACE("rx report type=%u d0=%08x d3=%08x", pattrib->pkt_rpt_type,
+			report.rxdw0, report.rxdw3);
 
 	if (pattrib->pkt_rpt_type == NORMAL_RX) { /* Normal rx packet	 */
 		pattrib->pkt_len = (u16)(report.rxdw0 & 0x00003fff); /* (u16)prxreport->pktlen; */
