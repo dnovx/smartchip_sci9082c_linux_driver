@@ -51,3 +51,27 @@ network backend still needs verification.
   soak and TCP throughput require independent validation.
 
 The historical “98%” was an engineering estimate, not a compatibility score.
+
+## Follow-up: associated scan timing
+
+Repeated tests on the installed milestone with networkd active found:
+
+- Ordinary active `iw` scans returned `scan aborted!` with no BSS entries.
+  The `iw` process exited zero even on these aborted scans, so exit status
+  alone is insufficient for validation.
+- Passive scans sometimes returned four BSS entries, but also aborted in a
+  later repetition. Passive scanning is not a reliable workaround yet.
+- Kernel logs showed `rtw_scan_timeout_handler` interleaved with repeated
+  `dump_mgntframe_and_wait_ack_timeout` messages. One passive survey completion
+  arrived after its watchdog had already expired.
+- After a 15-second settling interval, interface-bound ping recovered to
+  10/10 replies. Scanning can temporarily disrupt traffic.
+
+Source inspection identifies a timing hypothesis: `rtw_ps_annc()` calls
+`issue_nulldata(..., 3, 500)` for associated stations. Each unsuccessful ACK
+wait is 500 ms, plus 500 ms between attempts: about 2.5 seconds per announcement.
+The scan timeout calculation budgets channel dwell, back-operation dwell and
+a fixed 2-second allowance, without explicitly accounting for these repeated
+ACK waits. Missing SCI TX-report/ACK integration may therefore contribute to
+scan watchdog expiry. This is a hypothesis, not a verified fix; TX-report
+delivery and transition timing need instrumentation before changing behavior.
