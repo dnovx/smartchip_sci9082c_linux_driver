@@ -200,3 +200,34 @@ No new performance fix is claimed. Further work needs actual over-air
 RX-rate/retry/aggregate evidence and a focused PHY/calibration comparison.
 The72.2Mbps displayed PHY rate is not an achievable TCP payload target:
 protocol overhead, acknowledgments, contention and retries consume airtime.
+
+## Calibration audit and LC experiment — 2026-10-21
+
+Stock startup explicitly calls `PHY_Calibrate_IQ`, TX-power tracking and
+`PHY_LCCalibrate_9083X` after dynamic-management initialization. The SCI
+port does not yet reproduce these. Startup evidence:
+`ev_05e6955a54ac243924cd1fc235c77f7340d84f3a137c1cb5435f521a4830eb9b`.
+IQ entry point:
+`ev_b717ae27423bf04c059e5db3b766e9cf03ae17c2284fe78d9621d88925cdf6c5`.
+
+Recovered IQK includes ADDA/MAC/BB register backup and restoration, separate
+TX/RX one-shot sequences, repeated candidate comparison, and compensation
+matrix application. A literal decompiler translation is insufficient:
+some result reads lose high-word extraction. The port must preserve raw
+versus transformed BB access and verify result fields against assembly.
+No IQ calibration was triggered during this investigation.
+
+The smaller normal-mode LC routine pauses TX, ORs0x8000 into RF0x18,
+waits100ms and restores TX pause. Stock passes RF mask0xfff but its setter
+ORs unmasked data into preserved old bits, allowing the trigger through.
+This behavior was verified against LC assembly and the recovered setter:
+`ev_cdff57d27d032b0348c0ef35fad811c81b697e98bef034317b9adb377be5cc68`,
+`ev_1d722279d5ff53f5fed759095e40e6d5162ea0b620bcfe046887dca0a7d6bc3c`.
+
+An initialization-only normal-mode LC experiment read RF0x18 as0x07c01
+before and after the100ms wait. Three30-second runs measured30.79–31.00Mbps
+download and45.09–46.82Mbps upload, with zero loaded gateway ping loss.
+Four-stream results were31.11 download/33.60 upload. No throughput benefit
+was established. The experimental code was removed and installed baseline
+restored. LC readback alone is not proof of correct IQ calibration or of
+calibration resolving the download ceiling. Full IQK remains incomplete.
