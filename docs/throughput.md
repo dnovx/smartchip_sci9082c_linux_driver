@@ -173,3 +173,30 @@ Cross-build/host contracts passed;20/20 scans,300/300 large pings,HTTPS200,
 reconnect+scan,10/10 pings, empty queues and16 free buffers passed. Cold
 boot untested. The download ceiling and actual receive aggregate sizes
 remain unresolved; no RX DMA aggregation toggle was retained.
+
+## RX FIFO and timing experiments — 2026-10-21
+
+Temporary counters measured FIFO reads, bytes and size buckets during
+20-second device-bound downloads. They measure SDIO batches, not over-air
+AMPDU sizes. The instrumented station-filter baseline measured28.36Mbps,
+38936 reads and83944392 FIFO bytes (2156 bytes/read);27361 reads were
+at most2KB,11571 were2–8KB and4 exceeded8KB.
+
+Isolated stock `EDCA_init` SIFS writes (raw0x0850 to0x4428,0x463a,
+0x4514,0x4516) measured28.57Mbps and2205 bytes/read. No meaningful
+improvement was demonstrated. Stock evidence:
+`ev_7a31b4358fe09e85f5fba5862a5384f8817f9940124cb2c2d008df034cca929f`.
+
+The alternate stock `SdioAggregationSetting_init` profile uses raw
+0xf0/0x80 at0x4281/0x4280 rather than normal0x60/0x24. Applying it only
+at module initialization measured28.99Mbps and1747 bytes/read, with48730
+reads. This alternate profile belongs to a different stock configuration;
+it did not demonstrate a useful download improvement here. Evidence:
+`ev_f9e76ce7898752c925da548535779f79c1ba56d7d47c8d0a8501627917825d16`.
+
+Both experiments and temporary counters were removed. The installed
+station-filter baseline was reloaded and5/5 internet pings passed.
+No new performance fix is claimed. Further work needs actual over-air
+RX-rate/retry/aggregate evidence and a focused PHY/calibration comparison.
+The72.2Mbps displayed PHY rate is not an achievable TCP payload target:
+protocol overhead, acknowledgments, contention and retries consume airtime.
