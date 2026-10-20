@@ -52,6 +52,9 @@ network backend still needs verification.
 
 The historical “98%” was an engineering estimate, not a compatibility score.
 
+Subsequent local-LAN measurements and the SCI runtime report-control fix
+are documented in [throughput.md](throughput.md).
+
 ## Automatic-rate initialization fix
 
 SCI bring-up returns from `rtl8188es_hal_init()` through

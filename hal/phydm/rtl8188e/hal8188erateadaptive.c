@@ -15,6 +15,7 @@
 #include "mp_precomp.h"
 
 #include "../phydm_precomp.h"
+#include <rtw_s9082_trace.h>
 
 #if (RATE_ADAPTIVE_SUPPORT == 1)
 /* rate adaptive parameters */
@@ -1152,6 +1153,12 @@ void odm_ra_tx_rpt2_handle_8188e(struct dm_struct *dm, u8 *tx_rpt_buf,
 		  tx_rpt_len);
 
 	item_num = tx_rpt_len >> 3;
+#ifdef CONFIG_S9082
+	/* A report has complete eight-byte entries indexed by the validity mask. */
+	if (!item_num || (tx_rpt_len & 7) || item_num > ASSOCIATE_ENTRY_NUM || item_num > 32)
+		return;
+	S9082_TRACE("rate-feedback len=%u valid=%08x", tx_rpt_len, mac_id_valid_entry0);
+#endif
 	p_buffer = tx_rpt_buf;
 
 	do {
@@ -1171,6 +1178,9 @@ void odm_ra_tx_rpt2_handle_8188e(struct dm_struct *dm, u8 *tx_rpt_buf,
 			p_ra_info->RTY[3] = (u16)GET_TX_REPORT_TYPE1_RERTY_3(p_buffer);
 			p_ra_info->RTY[4] = (u16)GET_TX_REPORT_TYPE1_RERTY_4(p_buffer);
 			p_ra_info->DROP = (u16)GET_TX_REPORT_TYPE1_DROP_0(p_buffer);
+			S9082_TRACE("rate-feedback macid=%u rate=%u r0=%u r1=%u r2=%u r3=%u r4=%u drop=%u",
+				mac_id, p_ra_info->decision_rate, p_ra_info->RTY[0], p_ra_info->RTY[1],
+				p_ra_info->RTY[2], p_ra_info->RTY[3], p_ra_info->RTY[4], p_ra_info->DROP);
 
 			p_ra_info->TOTAL = p_ra_info->RTY[0] +
 					   p_ra_info->RTY[1] +

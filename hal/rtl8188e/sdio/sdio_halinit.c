@@ -16,6 +16,7 @@
 
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
+#include <rtw_s9082_trace.h>
 #ifdef CONFIG_S9082
 #include <rtw_s9082_hal.h>
 #endif
@@ -1681,6 +1682,21 @@ static u8 SetHwReg8188ES(PADAPTER Adapter, u8 variable, u8 *val)
 	case HW_VAR_RXDMA_AGG_PG_TH:
 		break;
 #ifdef CONFIG_S9082
+	case HW_VAR_RPT_TIMER_SETTING: {
+		u16 interval = *(u16 *)val;
+		/* Stock TDB_TxRPT_TimeRA_Set_: reverse bits within each byte. */
+		ret = rtw_write16(Adapter, 0x44f0, s9082_reverse_byte_bits(interval));
+		S9082_TRACE("rate-report interval=%u raw=%04x ret=%u", interval,
+			rtw_read16(Adapter, 0x44f0), ret);
+		break;
+	}
+	case HW_VAR_TX_RPT_MAX_MACID:
+		/* Stock hw_reg_9083x_set case 0x42, software RA only. */
+		if (!pHalData->fw_ractrl)
+			ret = rtw_write8(Adapter, 0x44ed, s9082_reverse_byte_bits((u8)(*val + 1)));
+		S9082_TRACE("rate-report max-macid=%u raw=%02x ret=%u", *val,
+			rtw_read8(Adapter, 0x44ed), ret);
+		break;
 	case HW_VAR_RCR:
 		ret = rtw_write32(Adapter, 0x4608, s9082_reverse_byte_bits(*(u32 *)val));
 		if (ret == _SUCCESS)
