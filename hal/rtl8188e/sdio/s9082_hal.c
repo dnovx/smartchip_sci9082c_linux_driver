@@ -382,7 +382,8 @@ u32 s9082_receive_init(PADAPTER adapter)
 		s9082_reverse_byte_bits((1U << 8) | (1U << 10) | (2U << 6) |
 			(3U << 4) | (3U << 12) | (3U << 14)));
 	W8(0x460f, 0x20);
-	hal->ReceiveConfig = 0x7000600f;
+	/* Stock WMACSetting_init: own unicast plus BSSID-filtered data/beacons. */
+	hal->ReceiveConfig = 0x700060ce;
 	W32(0x4608, s9082_reverse_byte_bits(hal->ReceiveConfig));
 	W16(0x46a4, 0xffff); W16(0x46a2, 0x2000); W16(0x46a0, 0xffff);
 	W8(0x4281, 0x60); W8(0x4280, 0x24);

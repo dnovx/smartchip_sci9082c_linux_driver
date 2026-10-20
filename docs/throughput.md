@@ -141,3 +141,35 @@ ceiling. The Windows sender, AP scheduling, receive delivery costs and
 over-air RX rates still need isolation. No download-speed fix is claimed.
 After baseline restoration, automatic RX settings and5/5 Wi-Fi internet
 pings were verified. The installed driver remains the validated AMPDU build.
+
+## Stock receive filtering — 2026-10-21
+
+Stock `WMACSetting_init` uses logical RCR0x700060ce, raw0x0e000673:
+`ev_0c0c4a6367b2828461b20730abfb3b9cd43a3c881c5a873a87d614deea7da63f`.
+The port instead retained0x7000600f: accept-all-unicast with both BSSID
+checks disabled. Restore the stock station mask, clear the BSSID checks
+during surveys (0x7000600e), and restore them at survey completion.
+This prevents unnecessary unrelated-unicast reception without suppressing
+other BSS discovery during scans. After scan/reconnect regression, register
+0x4608 read back0x0e000673, matching stock station filtering.
+
+Three30-second device-bound LAN runs measured31.39–31.67Mbps download
+and43.45–45.75Mbps upload; four streams measured31.42/39.66Mbps
+download/upload. This is only a small download difference from earlier
+30.86–30.97Mbps results, not proof the remaining bottleneck is fixed.
+Loaded single-stream download gateway mean latency remained211–289ms.
+
+Before the patch, a20-second29.57Mbps download showed50263 received data
+frames at descriptor rate16 (MCS4),2268 at17 and15 at18. RX rates are
+descriptor observations, not inferred from the displayed TX rate. CPU0
+retained roughly36% idle time over that sample; MMC host interrupt count
+increased138118. Interface RX error/drop counters remained zero. These
+do not establish a purely CPU-bound receive bottleneck. The stock RX
+descriptor parser matches the port's key rate, length and shift fields.
+
+Validated experimental module SHA256 (before a comment-only source edit):
+`c982b537c49ba2c7dc8c810bf4a1bbe00575c9e34b3aceb3dad6d6049be99e5a`.
+Cross-build/host contracts passed;20/20 scans,300/300 large pings,HTTPS200,
+reconnect+scan,10/10 pings, empty queues and16 free buffers passed. Cold
+boot untested. The download ceiling and actual receive aggregate sizes
+remain unresolved; no RX DMA aggregation toggle was retained.

@@ -1738,7 +1738,8 @@ static u8 SetHwReg8188ES(PADAPTER Adapter, u8 variable, u8 *val)
 		rtw_write32(Adapter, 0x4100, (rtw_read32(Adapter, 0x4100) & 0xff3fffff) | 0x400000);
 		break;
 	case HW_VAR_MLME_SITESURVEY:
-		pHalData->ReceiveConfig = 0x7000600f;
+		/* Survey accepts other BSS beacons; restore stock station filtering. */
+		pHalData->ReceiveConfig = *val ? 0x7000600e : 0x700060ce;
 		rtw_write32(Adapter, 0x4608, s9082_reverse_byte_bits(pHalData->ReceiveConfig));
 		break;
 #endif
