@@ -64,8 +64,46 @@ queues empty and16 TX buffers free. Cold boot of this artifact is untested.
 
 ## Next investigation
 
-Bulk-upload descriptor traces showed MCS7 with `ampdu=0`, not just idle
-ping traffic. Verify ADDBA negotiation, negotiated per-TID state and
-SCI aggregation contracts before changing AMPDU limits. CCX ACK reports
-remain unresolved; the failfast workaround remains enabled. High loaded
-download latency and signal-dependent rate behavior remain open.
+Initial bulk-upload traces showed MCS7 with `ampdu=0`, but the trace budget
+was consumed at the beginning of the transfer. The follow-up below corrects
+that interpretation. CCX ACK reports remain unresolved; failfast stays enabled.
+High loaded download latency and signal-dependent rate behavior remain open.
+
+## Follow-up: SCI AMPDU limits — 2026-10-21
+
+After an eight-second untraced upload warm-up, station state showed TID0
+aggregation enabled, no candidate TID pending, and RX reorder size16.
+Tracing the next transfer observed **MCS7, SGI1, AMPDU1**. ADDBA negotiation
+and descriptor aggregation enablement therefore work on this setup; the
+earlier samples did not establish a negotiation failure. Descriptor state
+alone does not prove the exact over-air aggregate size.
+
+The runtime AMPDU-factor control nevertheless fell through to generic
+Realtek registers. SCI now implements stock `hw_reg_9083x_set` case0x22
+(same evidence ID above): start with raw bytes `41,15,4e,9d`, cap each
+nibble to `min(1 << (factor + 2), 15)`, and write0x4458–0x445b without
+bit reversal. Factors outside0–3 are rejected. Negotiated factor1 produced
+`41,15,48,88`, confirmed by the successful write-path trace.
+
+With this isolated override, three30-second single-stream tests measured
+**44.50–46.44Mbps upload**, **30.86–30.97Mbps download**; four streams
+measured42.35/31.00Mbps. All loaded Wi-Fi gateway pings replied; mean
+upload-loaded latency was26–34ms, download-loaded225–318ms.
+
+A separate alternating baseline/patched/baseline/patched comparison used
+fresh module loads and20-second uploads:
+
+| Run | Previous report-control driver | SCI AMPDU-factor override |
+| --- | --- | --- |
+| Pair1 | 33.11Mbps | 45.35Mbps |
+| Pair2 | 30.36Mbps | 42.23Mbps |
+
+TCP retransmissions occurred in both variants (24/118 baseline,29/68
+patched); no claim of eliminating retransmissions is made. The repeated
+upload improvement supports retaining the SCI register correction.
+
+Validated module SHA256:
+`a3544a007ceb3c8205cbd29e234df9df23bbaa5ca99d83615a705446ce6d8c7a`.
+Cross-build and host contracts passed. Regression:20/20 active/passive
+scans (1.54–1.56s),300/300 large pings,HTTPS200,reconnect+scan,10/10
+subsequent pings, empty queues and16 free TX buffers. Cold boot untested.

@@ -1682,6 +1682,27 @@ static u8 SetHwReg8188ES(PADAPTER Adapter, u8 variable, u8 *val)
 	case HW_VAR_RXDMA_AGG_PG_TH:
 		break;
 #ifdef CONFIG_S9082
+	case HW_VAR_AMPDU_FACTOR: {
+		u8 limits[] = {0x41, 0x15, 0x4e, 0x9d};
+		u8 i, factor;
+		/* Stock hw_reg_9083x_set case 0x22: raw bytes, no reversal. */
+		if (*val > 3) {
+			ret = _FAIL;
+			break;
+		}
+		factor = min_t(u8, 1U << (*val + 2), 15);
+		for (i = 0; i < ARRAY_SIZE(limits); i++) {
+			if ((limits[i] >> 4) > factor)
+				limits[i] = (limits[i] & 15) | (factor << 4);
+			if ((limits[i] & 15) > factor)
+				limits[i] = (limits[i] & 0xf0) | factor;
+			if (rtw_write8(Adapter, 0x4458 + i, limits[i]) != _SUCCESS)
+				ret = _FAIL;
+		}
+		S9082_TRACE("ampdu-factor=%u limits=%02x,%02x,%02x,%02x ret=%u", *val,
+			limits[0], limits[1], limits[2], limits[3], ret);
+		break;
+	}
 	case HW_VAR_RPT_TIMER_SETTING: {
 		u16 interval = *(u16 *)val;
 		/* Stock TDB_TxRPT_TimeRA_Set_: reverse bits within each byte. */
