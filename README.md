@@ -52,6 +52,10 @@ build helpers. Never substitute unrelated headers merely to make it compile.
 The wrapper selects the tested AArch64 station-only configuration.
 Host-only contract checks: `python3 tools/test-contracts.py` (requires GCC).
 
+On the tested S905X, a missing board DT `cap-sdio-irq` property caused interrupt
+polling and measurable extra latency. See [latency findings](docs/latency.md)
+for paired measurements and the board-specific verification limits.
+
 Configure your own SSID/password through `armbian-config`, Netplan or your
 existing network manager. The installer does not change network backends.
 Busy/denied scan requests return `-EBUSY`; retry after settling. Keep Ethernet/console access during
