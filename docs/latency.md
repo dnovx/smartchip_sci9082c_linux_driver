@@ -51,8 +51,24 @@ aggregation change was retained. Do not treat that toggle as a latency fix.
 On the test box, a separate copy of the selected DTB adds only
 `cap-sdio-irq` to the Wi-Fi controller. The original DTB is preserved, and
 the SD-card `/boot/uEnv.txt` selection has a timestamped backup. The copied
-DTB is selected for the next boot. **Cold boot of this selection is not yet
-verified**; runtime IRQ operation was validated through controller reprobe.
+DTB was selected and subsequently **verified after a physical cold boot**.
+Native IRQ capabilities persisted (`0x400f010d`, caps2 `0x00060000`) without
+the temporary property helper loaded. Driver autoload and networkd/supplicant
+autoconnect succeeded; no failed systemd units were reported.
+
+Cold-boot paired measurements, 100/100 replies on every path:
+
+| Path | Ethernet median | Wi-Fi median | Wi-Fi p95 | Wi-Fi maximum |
+| --- | ---: | ---: | ---: | ---: |
+| Gateway | 0.802 ms | 5.95 ms | 8.69 ms | 12.0 ms |
+| 1.1.1.1 | 28.4 ms | 33.45 ms | 35.4 ms | 37.3 ms |
+
+All 10 active and 10 passive scans passed in 1535–1557 ms, returning 4–5
+BSS entries. Reconnect and a subsequent scan passed. Large-packet traffic
+passed 300/300 replies and HTTPS200, with the TX queue empty and all 16 buffers
+free. A further 10/10 small pings after reconnect averaged 34.0 ms.
+The remaining approximately 5 ms Wi-Fi overhead is still unresolved; the
+sub-5 ms LAN and 20–30 ms internet targets are not yet consistently met.
 
 For other boards, identify the correct controller and check host-driver IRQ
 support before preparing a board-specific DT fix. The driver installer does
