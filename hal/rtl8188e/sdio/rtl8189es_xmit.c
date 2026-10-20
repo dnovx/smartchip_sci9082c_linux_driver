@@ -279,6 +279,8 @@ void rtl8188es_fill_default_txdesc(
 				if (pattrib->ht_en)
 					ptxdesc->sgi = odm_ra_get_sgi_8188e(&pHalData->odmpriv, pattrib->mac_id);
 				ptxdesc->datarate = odm_ra_get_decision_rate_8188e(&pHalData->odmpriv, pattrib->mac_id);
+				S9082_TRACE("tx-rate macid=%u rate=%u sgi=%u ampdu=%u", pattrib->mac_id,
+					ptxdesc->datarate, ptxdesc->sgi, pattrib->ampdu_en);
 
 #if (POWER_TRAINING_ACTIVE == 1)
 				ptxdesc->pwr_status = odm_ra_get_hw_pwr_status_8188e(&pHalData->odmpriv, pattrib->mac_id);

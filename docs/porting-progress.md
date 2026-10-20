@@ -52,6 +52,55 @@ network backend still needs verification.
 
 The historical “98%” was an engineering estimate, not a compatibility score.
 
+## Automatic-rate initialization fix
+
+SCI bring-up returns from `rtl8188es_hal_init()` through
+`s9082_receive_init()`, bypassing the generic PHYDM initialization. Data TX
+nevertheless obtains its descriptor rate from PHYDM's per-MACID software state.
+Initialize that state with `odm_ra_info_init_all()` after SCI queue setup.
+This sets initial rates, masks, thresholds and retry/power-training state; it
+does not run unadapted generic PHYDM hardware initialization or force a rate.
+
+Paired Ookla tests used the same server (70730), strong signal and the same
+network configuration. Results are Mbps, download/upload:
+
+| Configuration | Wi-Fi | Ethernet control |
+| --- | --- | --- |
+| Before fix, run 1 | 7.68 / 0.75 | 93.06 / 93.97 |
+| Before fix, run 2 | 8.02 / 0.76 | 92.53 / 94.03 |
+| Software RA initialization only, run 1 | 28.78 / 34.88 | 92.73 / 94.03 |
+| Software RA initialization only, run 2 | 29.22 / 35.57 | 93.22 / 94.03 |
+
+Fixed-rate diagnostic tests also improved throughput, but fixed rates are not
+retained. Earlier EDCA/AMPDU/timing experiments were removed before the final
+two runs. Upload-loaded latency fell from about 1061–1233 ms to 77–97 ms.
+Both final speedtests reported zero packet loss. Internet speedtests include
+server/path variability and do not replace local-peer radio throughput tests.
+
+The final artifact SHA256 is
+`2bf99807911ae6805722523171db4de4c8144185ad0daad558dde9db02665527`.
+It passed 10 active + 10 passive scans (1.53–1.56 s, 4–5 BSS entries),
+300/300 large pings, HTTPS200, reconnect and a subsequent scan, then 10/10
+pings. TX queues drained with all 16 buffers free. Cross-build and host
+transport/lifecycle contracts passed. Bounded optional tracing observed
+MACID0 using descriptor rate17 (MCS5), rather than relying on the displayed
+72.2 Mbps link rate. Cold boot of this new artifact is not yet validated.
+
+### Feature evidence snapshot
+
+| Area | Status |
+| --- | --- |
+| Station association, encrypted traffic, DHCP, HTTPS | Verified on test setup |
+| Active/passive scans, reconnect | Verified with management-ACK failfast workaround |
+| Native SDIO IRQ, networkd autoconnect across cold boot | Verified with earlier scan-fix artifact; see `latency.md` |
+| Automatic-mode throughput after software RA initialization | Verified in two paired runs above |
+| Rate feedback correctness across signal/rate changes | Implemented/inherited, not fully validated |
+| CCX management-ACK reports | Incomplete; failfast remains enabled |
+| EDCA, CAM/security offload, aggregation controls | Incomplete SCI adaptation/audit |
+| Calibration, TX-power limits, 40 MHz, long soak | Unvalidated/incomplete |
+| AP, P2P, monitor, power saving, WPA3 | Unvalidated; no SCI support claim |
+| Warm reboot | Unresolved; cold power-on works with prior artifact |
+
 ## Follow-up: associated scan timing
 
 Repeated tests on the installed milestone with networkd active found:

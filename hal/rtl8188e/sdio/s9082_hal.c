@@ -401,6 +401,8 @@ u32 s9082_receive_init(PADAPTER adapter)
 		hal->SdioTxFIFOFreePage[2], hal->SdioTxFIFOFreePage[3], SDIO_TX_DIV_NUM);
 	HalQueryTxOQTBufferStatus8189ESdio(adapter);
 	hal->SdioTxOQTMaxFreeSpace = hal->SdioTxOQTFreeSpace;
+	/* SCI skips generic PHYDM hardware init, but TX uses its software RA state. */
+	odm_ra_info_init_all(&hal->odmpriv);
 	RTW_INFO("S9082 receive initialization completed\n");
 	return _SUCCESS;
 fail:
