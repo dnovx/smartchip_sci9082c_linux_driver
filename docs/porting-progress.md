@@ -52,6 +52,9 @@ network backend still needs verification.
 
 The historical “98%” was an engineering estimate, not a compatibility score.
 
+Use the [remaining adaptation checklist](remaining-adaptations.md) for
+current completion gaps and acceptance evidence instead of that estimate.
+
 Subsequent local-LAN measurements and the SCI runtime report-control fix
 are documented in [throughput.md](throughput.md).
 

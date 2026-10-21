@@ -29,7 +29,12 @@ void rtl8188e_sreset_xmit_status_check(_adapter *padapter)
 	unsigned int diff_time;
 	u32 txdma_status;
 
+#ifdef CONFIG_S9082
+	/* Stock _check_sreset_xmit_status_tll9083x: raw SCI TX DMA status. */
+	txdma_status = rtw_read32(padapter, 0x4210);
+#else
 	txdma_status = rtw_read32(padapter, REG_TXDMA_STATUS);
+#endif
 	if (txdma_status != 0x00 && txdma_status != 0xeaeaeaea) {
 		RTW_INFO("%s REG_TXDMA_STATUS:0x%08x\n", __FUNCTION__, txdma_status);
 		rtw_hal_sreset_reset(padapter);
@@ -76,7 +81,20 @@ void rtl8188e_sreset_linked_status_check(_adapter *padapter)
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
 
 	u32 rx_dma_status = 0;
+#ifndef CONFIG_S9082
 	u8 fw_status = 0;
+#endif
+#ifdef CONFIG_S9082
+	/* Stock _sreset_linked_status_check_tll9083x uses raw read/writeback. */
+	rx_dma_status = rtw_read32(padapter, 0x4288);
+	if (rx_dma_status != 0 && rx_dma_status != 0xeaeaeaea &&
+	    rx_dma_status != 0xffffffff) {
+		pr_info_ratelimited("S9082 RX DMA status:0x%08x\n", rx_dma_status);
+		rtw_write32(padapter, 0x4288, rx_dma_status);
+	}
+	/* Stock reads this byte without interpreting Realtek firmware codes. */
+	(void)rtw_read8(padapter, 0x41c8);
+#else
 	rx_dma_status = rtw_read32(padapter, REG_RXDMA_STATUS);
 	if (rx_dma_status != 0x00) {
 		RTW_INFO("%s REG_RXDMA_STATUS:0x%08x\n", __FUNCTION__, rx_dma_status);
@@ -89,6 +107,7 @@ void rtl8188e_sreset_linked_status_check(_adapter *padapter)
 		else if (fw_status == 2)
 			RTW_INFO("%s REG_FW_STATUS (0x%02x), Condition_No_Match !!\n", __FUNCTION__, fw_status);
 	}
+#endif
 #if 0
 	u32 regc50, regc58, reg824, reg800;
 	regc50 = rtw_read32(padapter, 0xc50);
