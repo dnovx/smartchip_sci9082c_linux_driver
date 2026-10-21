@@ -295,3 +295,29 @@ No additional calibration trigger was executed in this follow-up. Before
 setup-only/no-matrix trials, establish a cold-start performance/RF reference
 and verify mode-table read/restore semantics. Do not repeat full IQK merely
 because visible matrix registers look restored. Persistent driver unchanged.
+
+## Physical cold-start reference — 2026-10-21
+
+User power-cycled the board. New boot ID:
+`a07815b9-2112-467e-a4b9-3b45291cf3a6`. Installed module remains the
+c982b537… station-filter artifact, IQK absent; networkd/WPA autoconnect
+worked. Visible IQ matrix/results registers match their pre-trial values.
+Extended RF reads still return zeros and do not establish mode-table state.
+
+Three30-second local runs measured25.93–28.03Mbps download and
+36.27–42.01Mbps upload; four streams measured31.35/34.39Mbps
+download/upload. Ethernet control94.30/94.89Mbps. All loaded Wi-Fi
+gateway pings replied. Physical power removal did not recover the earlier
+best throughput; retained IQK state is therefore unlikely to be the sole
+explanation. Environment/rate variability and remaining driver defects
+are still unresolved.
+
+First cold-boot regression completed18 scans, then an active `iw` scan
+timed out after20 seconds with no result. The station remained connected.
+A repeat passed20/20 scans,300/300 large pings,HTTPS200,reconnect+scan,
+10/10 subsequent pings, empty queues and16 free buffers. This is an
+intermittent scan failure, not an unconditional cold-boot regression pass.
+No driver reload or calibration trigger was needed between those runs.
+The installed module was not changed. Further IQK trials remain gated on
+verified RF mode-table access/restoration; intermittent scan completion
+also needs focused tracing if it recurs.
