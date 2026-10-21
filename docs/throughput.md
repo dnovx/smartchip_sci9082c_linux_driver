@@ -270,3 +270,28 @@ retained in the published driver. Next work must isolate RF mode-table
 cleanup, matrix application and prerequisite analog state before another
 IQK attempt; valid-looking coefficients alone are insufficient. IQK and
 the download ceiling remain unresolved. The installed artifact is unchanged.
+
+## Recovery baseline and RF cleanup audit — 2026-10-21
+
+The installed c982b537… station-filter baseline has no IQK parameter, and
+visible matrix/results registers match the pre-prototype values. A new
+three-run30-second baseline measured27.33–27.82Mbps download and
+39.65–40.61Mbps upload; Ethernet remained94.30/94.89Mbps. Every loaded
+Wi-Fi gateway ping replied. These results are below the earlier best and
+do not establish complete analog recovery. A cold-start comparison is
+needed to distinguish retained analog state from radio/environment changes.
+
+Decoding raw IQK serial commands with the verified SCI RF byte transform
+identifies writes to RF0xef=0x800a0,0x30=0x30000,0x31=0x0000f, and
+0x32=0xf117b then0xf7ffa. The final raw0x00c074cb command instead targets
+RF0x00=0x32ed3; it does not restore those four mode-table registers.
+The prototype did not back up/check them. Stock also leaves those writes,
+but may depend on prerequisites absent from the port, so this is a concrete
+audit gap rather than proof of causation. The generic RF dump was retained
+privately; zero-valued extended-register reads are not accepted as proof
+that indirect mode tables are unchanged or fully readable.
+
+No additional calibration trigger was executed in this follow-up. Before
+setup-only/no-matrix trials, establish a cold-start performance/RF reference
+and verify mode-table read/restore semantics. Do not repeat full IQK merely
+because visible matrix registers look restored. Persistent driver unchanged.
