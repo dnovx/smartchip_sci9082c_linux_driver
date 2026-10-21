@@ -231,3 +231,42 @@ Four-stream results were31.11 download/33.60 upload. No throughput benefit
 was established. The experimental code was removed and installed baseline
 restored. LC readback alone is not proof of correct IQ calibration or of
 calibration resolving the download ceiling. Full IQK remains incomplete.
+
+## Opt-in IQK prototype — 2026-10-21
+
+A private initialization-only prototype recovered stock ADDA/MAC/BB
+backup/restore, two-attempt TX/RX one-shots, three candidate rounds,
+consistency threshold5, and mixed raw/transformed matrix writes. It only
+accepted complete valid TX/RX candidate pairs, omitting stock's partial
+candidate fallback. It was disabled by default and never installed as the
+persistent driver. Host UBSan checks exhaustively covered all1024 result
+fields and1024x1024 signed TX products, plus consistency boundaries.
+
+Assembly confirmed result extraction as bits16–25. TX Y uses a transformed
+BB read, other result fields use raw reads. Matrix operations also differ:
+TX C80/C94 writes are raw, C4C and RX matrix writes are transformed.
+Key access contracts:
+`ev_ca7d179d802cd5b98782d772466108fcfd8b7b21fd072a978e8fd6f3f329fe31`,
+`ev_e3a8e91c806fab8eefe9515deb5fc8fbdd0c8777834a653af1abeb5758217209`,
+`ev_6b47c98cb89c26c3eb3128f57ad0d0c5c843f7b31e4c6307f218192c2e2729b9`,
+matrix `ev_5cbdac62d33ef865905bbe02bb7e4e8577cd2e53f5b491fea1620b457e8516dd`.
+
+Initial rounds did not yield consistent full candidates, so no matrix was
+applied. Matching stock's inter-round setup and exit-tone sequence produced
+matching candidates0/2: TX0x0f9,0x006; RX0x100,0. Operating-register
+readbacks passed; C80 changed0x390000e4→0x390500dd, RX C14 remained
+0x02008000. These checks did **not** establish correct analog/RF state.
+
+The enabled prototype regressed three30-second tests to12.20–12.58Mbps
+download and22.17–23.87Mbps upload; Ethernet remained94.3/94.9Mbps.
+It was rejected. The same prototype disabled recovered26.6Mbps download
+and36.9Mbps upload in short15-second runs, with substantial variability;
+this is not a full recovery/performance validation. Finally the exact
+installed station-filter baseline was reloaded and5/5 internet pings passed.
+
+The prototype and arithmetic tests remain private research artifacts,
+outside the public driver build. No IQK parameter or calibration code is
+retained in the published driver. Next work must isolate RF mode-table
+cleanup, matrix application and prerequisite analog state before another
+IQK attempt; valid-looking coefficients alone are insufficient. IQK and
+the download ceiling remain unresolved. The installed artifact is unchanged.
